@@ -3,11 +3,19 @@ from fastapi.responses import JSONResponse
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 
 load_dotenv()
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (you can restrict this to specific origins)
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
 
 OpenAI_llm = ChatOpenAI(
     model="gpt-4o-mini-2024-07-18",
@@ -45,6 +53,7 @@ async def validate_response(request: Request):
     question = data.get("question", "")
     reply = data.get("reply", "")
 
+    # Input validation
     if not question or not reply:
         return JSONResponse(
             content={"error": "Both 'question' and 'reply' are required."},
@@ -53,8 +62,6 @@ async def validate_response(request: Request):
 
     try:
         result = await asyncio.to_thread(validation_bot.invoke, f"Question: {question}. Reply: {reply}")
-        print(f"Question: {question}. Reply: {reply}")
-        print("Result: ", result.dict())
         return JSONResponse(content=result.dict())
     
     except Exception as e:

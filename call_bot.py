@@ -6,6 +6,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import START, MessagesState, StateGraph
 from pc_vs import VectorStoreManager
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
 import os
 
 from constants import PERSONALITIES
@@ -17,6 +18,15 @@ NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (you can restrict this to specific origins)
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
+
+
 # Setup workflow for LangChain
 workflow = StateGraph(state_schema=MessagesState)
 
@@ -74,7 +84,6 @@ async def chat_endpoint(request: Request):
     user_input = data.get("message", "")
     userid = data.get("userid", "")
     personality = data.get("personality", "bubbly_coach")
-    print("Personality: ", personality)
     
     # Validate input
     if not user_input:
