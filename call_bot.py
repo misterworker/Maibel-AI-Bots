@@ -9,11 +9,13 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg_pool import AsyncConnectionPool
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langgraph.graph import START, MessagesState, StateGraph
+from langgraph.types import StreamWriter
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
+
 from pc_vs import VectorStoreManager
-from constants import PERSONALITIES
 from validation_bot import validate_response_logic
+from utils import handle_intents, construct_system_prompt
 import os
 
 load_dotenv()
@@ -82,7 +84,7 @@ zephyr_llm = HuggingFaceEndpoint(
     streaming=True,
 )
 zephyr_hf_llm = ChatHuggingFace(llm=zephyr_llm, disable_streaming=False)
-all_llms = [nemo_nvidia_llm, OpenAI_llm, zephyr_hf_llm]
+all_llms = [OpenAI_llm, nemo_nvidia_llm, zephyr_hf_llm]
 
 pinecone_vs = VectorStoreManager()
 
@@ -93,42 +95,24 @@ async def call_model(state: MessagesState, config):
 
     retrieved_docs = pinecone_vs.retrieve_from_vector_store(user_input, 1)
     retrieved_context = "\n".join([res.page_content for res in retrieved_docs])   
-
-    personalityId = config["configurable"].get("personalityId")
-    if personalityId == "custom_coach":
-        background = config["configurable"].get("background")
-        personalities = config["configurable"].get("personalities")
-        gender = config["configurable"].get("gender")
-        name = config["configurable"].get("name", "Coach")
-    else:
-        personality_data = PERSONALITIES.get(personalityId, PERSONALITIES["female_coach"])
-        background = personality_data.get("Background", "")
-        personalities = personality_data.get("Short Description", "")
-        name = personality_data.get("Name", "")
-        gender = personality_data.get("Gender", "")
-
-    system_prompt = (
-        f"You are {name} ({gender}).\nThis is your background: {background}\n"
-        f"Use this as contextual information:\n{retrieved_context}\n"
-        f"These are your personalities: {personalities}\n"
-        "When communicating with the user, remember to stay in character. "
-        "Lead the conversation when neccessary, including when the user first contacts you."
-    )
-
+    
+    system_prompt = construct_system_prompt(config, retrieved_context)
     messages = [SystemMessage(content=system_prompt)] + trimmed_state
 
     errors = []
     for llm in all_llms:
         try:
             response = await llm.ainvoke(messages)
+            print("Response: ", response)
             # print(f"{type(llm).__name__} Response: {response}")
             return {"messages": response}
         except Exception as e:
             errors.append(f"{type(llm).__name__}: {str(e)}")
             # print(f"Error from {type(llm).__name__}: ", e)
 
-    print("All LLMs failed. Errors: ", errors)
+    print(f"All LLMs failed.\nUserID: {config['configurable'].get('thread_id')}\nErrors: {errors}")
     raise Exception("Error: LLMs Down.")
+
 
 
 @app.post("/chat")
@@ -154,6 +138,12 @@ async def chat_endpoint(request: Request):
         try:
             # Stream the model response back to the client
             async def message_stream():
+
+                intent_response = await handle_intents(user_input)
+                if intent_response:
+                    yield intent_response["messages"]
+                    return
+                
                 config = {"configurable": {"thread_id": userid, "personality": personality}}
                 
                 messages = {"messages": [HumanMessage(content=user_input)]}
