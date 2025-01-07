@@ -1,18 +1,19 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse
+from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from contextlib import asynccontextmanager
+from langchain_openai import ChatOpenAI
 from langchain_nvidia_ai_endpoints import ChatNVIDIA
-from langchain_core.messages import HumanMessage, SystemMessage, trim_messages, AIMessage
+from langchain_core.messages import HumanMessage, SystemMessage, trim_messages
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg_pool import AsyncConnectionPool
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langgraph.graph import START, MessagesState, StateGraph
-from pc_vs import VectorStoreManager
-from langgraph.prebuilt import create_react_agent
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
-import os
+from pc_vs import VectorStoreManager
 from constants import PERSONALITIES
+import os
 
 load_dotenv()
 
@@ -20,10 +21,11 @@ load_dotenv()
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 DB_URI = os.getenv("DB_URI")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global postgres_pool, memory, langgraph_agent
+    global postgres_pool, memory, langgraph_agent, all_llms
     
     postgres_pool = AsyncConnectionPool(
         conninfo=DB_URI,
@@ -54,7 +56,33 @@ tavily = TavilySearchResults(max_results=3)
 # Setup workflow for LangChain
 workflow = StateGraph(state_schema=MessagesState)
 
-nemo_nvidia_llm = ChatNVIDIA(model="meta/llama-3.1-70b-instruct", api_key=NVIDIA_API_KEY).bind_tools([tavily])
+OpenAI_llm = ChatOpenAI(
+    model="gpt-4o-mini-2024-07-18",
+    temperature=0.6,
+    max_tokens=5000,
+    timeout=None,
+    max_retries=2,
+    api_key=OPENAI_API_KEY,
+)
+
+nemo_nvidia_llm = ChatNVIDIA(
+    model="meta/llama-3.1-70b-instruct",
+    temperature=0.6,
+    max_tokens=5000,
+    api_key=NVIDIA_API_KEY,
+)
+
+zephyr_llm = HuggingFaceEndpoint(
+    repo_id="HuggingFaceH4/zephyr-7b-beta",
+    task="text-generation",
+    max_new_tokens=5000,
+    do_sample=False,
+    repetition_penalty=1.03,
+    streaming=True,
+)
+zephyr_hf_llm = ChatHuggingFace(llm=zephyr_llm, disable_streaming=False)
+all_llms = [OpenAI_llm, nemo_nvidia_llm, zephyr_hf_llm]
+
 pinecone_vs = VectorStoreManager()
 
 async def call_model(state: MessagesState, config):
@@ -82,16 +110,25 @@ async def call_model(state: MessagesState, config):
         f"You are {name} ({gender}).\nThis is your background: {background}\n"
         f"Use this as contextual information:\n{retrieved_context}\n"
         f"These are your personalities: {personalities}\n"
-        "When communicating with the user, remember to stay in character."
+        "When communicating with the user, remember to stay in character. "
+        "Lead the conversation when neccessary, including when the user first contacts you."
     )
 
     messages = [SystemMessage(content=system_prompt)] + trimmed_state
 
-    try:    
-        response = await nemo_nvidia_llm.ainvoke(messages)
-        return {"messages": response}
-    except Exception as e:
-        raise Exception(f"stream failed: {e}")
+    errors = []
+    for llm in all_llms:
+        try:
+            response = await llm.ainvoke(messages)
+            # print(f"{type(llm).__name__} Response: {response}")
+            return {"messages": response}
+        except Exception as e:
+            errors.append(f"{type(llm).__name__}: {str(e)}")
+            # print(f"Error from {type(llm).__name__}: ", e)
+
+    print("All LLMs failed. Errors: ", errors)
+    raise Exception("Error: LLMs Down.")
+
 
 @app.post("/chat")
 async def chat_endpoint(request: Request):
