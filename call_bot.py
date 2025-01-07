@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from pc_vs import VectorStoreManager
 from constants import PERSONALITIES
+from validation_bot import validate_response_logic
 import os
 
 load_dotenv()
@@ -81,7 +82,7 @@ zephyr_llm = HuggingFaceEndpoint(
     streaming=True,
 )
 zephyr_hf_llm = ChatHuggingFace(llm=zephyr_llm, disable_streaming=False)
-all_llms = [OpenAI_llm, nemo_nvidia_llm, zephyr_hf_llm]
+all_llms = [nemo_nvidia_llm, OpenAI_llm, zephyr_hf_llm]
 
 pinecone_vs = VectorStoreManager()
 
@@ -136,28 +137,36 @@ async def chat_endpoint(request: Request):
     user_input = data.get("message", "")
     userid = data.get("userid", "")
     personality = data.get("personality", "bubbly_coach")
+    bot_type = data.get("bot_type", "normal")
     
     if not user_input:
         return JSONResponse(content={"error": "Message is required"}, status_code=400)
     if not userid:
         return JSONResponse(content={"error": "No userid passed"}, status_code=400)
 
-    try:
-        # Stream the model response back to the client
-        async def message_stream():
-            config = {"configurable": {"thread_id": userid, "personality": personality}}
-            
-            messages = {"messages": [HumanMessage(content=user_input)]}
-            
-            try:
-                # stream_mode should be how chunks are outputted (values = state, messages is pure content)
-                async for msg, metadata in langgraph_agent.astream(messages, config=config, stream_mode="messages"):
-                    yield msg.content
+    if bot_type == "validate":
+        question = data.get("question", "")
+        if not question: return JSONResponse(content={"error": "Question is required for validation"}, status_code=400)
+        validation_result = validate_response_logic(question, user_input)
+        return JSONResponse(content=validation_result)
+    
+    elif bot_type == "normal":
+        try:
+            # Stream the model response back to the client
+            async def message_stream():
+                config = {"configurable": {"thread_id": userid, "personality": personality}}
                 
-            except Exception as e:
-                yield f"Error: {str(e)}"
+                messages = {"messages": [HumanMessage(content=user_input)]}
+                
+                try:
+                    # stream_mode should be how chunks are outputted (values = state, messages is pure content)
+                    async for msg, metadata in langgraph_agent.astream(messages, config=config, stream_mode="messages"):
+                        yield msg.content
+                    
+                except Exception as e:
+                    yield f"Error: {str(e)}"
 
-        return StreamingResponse(message_stream(), media_type="text/plain")
+            return StreamingResponse(message_stream(), media_type="text/plain")
 
-    except Exception as e:
-        return JSONResponse(content={"error": f"Internal server error: {str(e)}"}, status_code=500)
+        except Exception as e:
+            return JSONResponse(content={"error": f"Internal server error: {str(e)}"}, status_code=500)
