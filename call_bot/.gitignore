@@ -1,0 +1,26 @@
+# Ignore .env files (sensitive information)
+.env
+
+# Ignore Python bytecode files
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore local environment files
+*.env
+
+# Ignore virtual environment directories
+venv/
+env/
+*.env/
+
+# Ignore system and IDE files
+.DS_Store
+*.swp
+.idea/
+.vscode/
+*.git
+
+# Ignore other unnecessary files/folders
+*.log

@@ -1,8 +1,9 @@
 import os
 from pinecone import Pinecone
-from langchain_huggingface import HuggingFaceEmbeddings
+
 from langchain_pinecone import PineconeVectorStore
 from dotenv import load_dotenv
+from langchain_openai import OpenAIEmbeddings
 
 load_dotenv()
 
@@ -20,7 +21,7 @@ class VectorStoreManager:
     def __get_vector_store(self):
         model_kwargs = {'device': 'cpu'}
         encode_kwargs = {'normalize_embeddings': False}
-        embeddings = HuggingFaceEmbeddings(model_name=MODEL_NAME, model_kwargs=model_kwargs, encode_kwargs=encode_kwargs)
+        embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
         return PineconeVectorStore(index_name=INDEX_NAME, embedding=embeddings)
 
     def retrieve_from_vector_store(self, query: str, top_k: int):

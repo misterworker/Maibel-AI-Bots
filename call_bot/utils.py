@@ -23,7 +23,7 @@ async def handle_intents(user_input: str):
 
     return None
 
-def construct_system_prompt(config, retrieved_context: str) -> str:
+def construct_system_prompt(config, retrieved_context: str, summary: str, challenge: str) -> str:
     personalityId = config["configurable"].get("personalityId")
     if personalityId == "custom_coach":
         background = config["configurable"].get("background")
@@ -38,9 +38,10 @@ def construct_system_prompt(config, retrieved_context: str) -> str:
         gender = personality_data.get("Gender", "")
 
     return (
+        f"Summary of message so far: {summary}\n"
         f"You are {name} ({gender}).\nThis is your background: {background}\n"
         f"Use this as contextual information:\n{retrieved_context}\n"
         f"These are your personalities: {personalities}\n"
         "When communicating with the user, remember to stay in character. "
-        "Lead the conversation when necessary, including when the user first contacts you."
+        f"The user currently has the in-game challenge: {challenge}. Just keep that in mind"
     )
