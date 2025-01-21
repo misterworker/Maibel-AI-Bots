@@ -23,25 +23,30 @@ async def handle_intents(user_input: str):
 
     return None
 
-def construct_system_prompt(config, retrieved_context: str, summary: str, challenge: str) -> str:
-    personalityId = config["configurable"].get("personalityId")
-    if personalityId == "custom_coach":
-        background = config["configurable"].get("background")
-        personalities = config["configurable"].get("personalities")
-        gender = config["configurable"].get("gender")
-        name = config["configurable"].get("name", "Coach")
+def construct_system_prompt(config, retrieved_context: str) -> str:
+    configurable = config["configurable"]
+    
+    coachId = configurable.get("coachId")
+    if coachId == "custom_coach":
+        personalities = configurable.get("personality", [])
+        coachName = configurable.get("coachName", "")
+        gender = configurable.get("gender", "")
+        background = configurable.get("background", "")
     else:
-        personality_data = PERSONALITIES.get(personalityId, PERSONALITIES["female_coach"])
+        personality_data = PERSONALITIES.get(coachId, PERSONALITIES["female_coach"])
         background = personality_data.get("Background", "")
         personalities = personality_data.get("Short Description", "")
-        name = personality_data.get("Name", "")
+        coachName = personality_data.get("Name", "")
         gender = personality_data.get("Gender", "")
 
+    challenge = configurable.get("challenge", "")
+    challengeProgress = configurable.get("challengeProgress", 0)
+    
     return (
-        f"Summary of message so far: {summary}\n"
-        f"You are {name} ({gender}).\nThis is your background: {background}\n"
+        f"You are {coachName} ({gender}).\nThis is your background: {background}\n"
         f"Use this as contextual information:\n{retrieved_context}\n"
         f"These are your personalities: {personalities}\n"
         "When communicating with the user, remember to stay in character. "
-        f"The user currently has the in-game challenge: {challenge}. Just keep that in mind"
+        f"The user currently has the in-game challenge: {challenge} which is {challengeProgress}% "
+        "completed. Just keep this in mind."
     )

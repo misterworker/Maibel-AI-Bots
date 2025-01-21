@@ -9,7 +9,6 @@ load_dotenv()
 
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 INDEX_NAME = "maibelai"
-MODEL_NAME = "sentence-transformers/all-mpnet-base-v2"
 
 class VectorStoreManager:
     def __init__(self):
@@ -19,8 +18,6 @@ class VectorStoreManager:
         Pinecone(api_key=PINECONE_API_KEY)
 
     def __get_vector_store(self):
-        model_kwargs = {'device': 'cpu'}
-        encode_kwargs = {'normalize_embeddings': False}
         embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
         return PineconeVectorStore(index_name=INDEX_NAME, embedding=embeddings)
 

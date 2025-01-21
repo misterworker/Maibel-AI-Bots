@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messaging API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f8ff;
+            margin: 40px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: auto;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        label {
+            font-weight: bold;
+            margin-top: 10px;
+            display: block;
+        }
+        textarea, input, button, select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .response {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Messaging API Test</h1>
+    <label for="message">Message:</label>
+    <textarea id="message" rows="4" cols="50"></textarea>
+
+    <label for="userid">User ID:</label>
+    <input type="text" id="userid">
+
+    <label for="summary">Previous Summary:</label>
+    <input type="text" id="summary" value="No Summary">
+
+    <label for="challenge">Challenge:</label>
+    <input type="text" id="challenge" value="No Challenge">
+
+    <label for="coachId">Coach ID:</label>
+    <select id="coachId" onchange="toggleCustomCoachFields()">
+        <option value="female_coach">Female Coach</option>
+        <option value="male_coach">Male Coach</option>
+        <option value="custom_coach">Custom Coach</option>
+    </select>
+
+    <div id="customCoachFields" style="display: none;">
+        <label for="coachName">Coach Name:</label>
+        <input type="text" id="coachName">
+
+        <label for="gender">Gender:</label>
+        <input type="text" id="gender">
+
+        <label for="background">Background:</label>
+        <input type="text" id="background">
+
+        <label for="personality">Personality (comma-separated):</label>
+        <input type="text" id="personality">
+    </div>
+
+    <button onclick="sendMessage()">Send Message</button>
+
+    <div class="response" id="response"></div>
+
+    <script>
+        function toggleCustomCoachFields() {
+            const coachId = document.getElementById('coachId').value;
+            const customFields = document.getElementById('customCoachFields');
+            if (coachId === 'custom_coach') {
+                customFields.style.display = 'block';
+            } else {
+                customFields.style.display = 'none';
+            }
+        }
+
+        async function sendMessage() {
+            const message = document.getElementById('message').value;
+            const userid = document.getElementById('userid').value;
+            const summary = document.getElementById('summary').value;
+            const challenge = document.getElementById('challenge').value;
+            const coachId = document.getElementById('coachId').value;
+
+            let personality = [];
+            let coachName = "";
+            let gender = "";
+            let background = "";
+
+            if (coachId === 'custom_coach') {
+                coachName = document.getElementById('coachName').value;
+                gender = document.getElementById('gender').value;
+                background = document.getElementById('background').value;
+                personality = document.getElementById('personality').value.split(',').map(item => item.trim());
+            }
+
+            const payload = {
+                message: message,
+                userid: userid,
+                challenge: challenge,
+                coachId: coachId,
+                personality: personality,
+                coachName: coachName,
+                gender: gender,
+                background: background
+            };
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                document.getElementById('response').innerText = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('response').innerText = `Error: ${error}`;
+            }
+        }
+    </script>
+
+</body>
+</html>
