@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validate Response</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            margin: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: auto;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        label {
+            font-weight: bold;
+            margin-top: 10px;
+            display: block;
+        }
+        textarea, input, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .response {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f1f1f1;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Validate Response</h1>
+    <label for="question">Question:</label>
+    <textarea id="question" rows="3"></textarea>
+
+    <label for="reply">Reply:</label>
+    <textarea id="reply" rows="3"></textarea>
+
+    <button onclick="validateResponse()">Validate</button>
+
+    <div class="response" id="response"></div>
+
+    <script>
+        async function validateResponse() {
+            const question = document.getElementById('question').value;
+            const reply = document.getElementById('reply').value;
+
+            if (!question || !reply) {
+                document.getElementById('response').innerText = "Please fill in both the question and the reply.";
+                return;
+            }
+
+            const payload = { question, reply };
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/validate_response', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('response').innerText = JSON.stringify(data, null, 2);
+                } else {
+                    const errorData = await response.json();
+                    document.getElementById('response').innerText = `Error: ${errorData.error}`;
+                }
+            } catch (error) {
+                document.getElementById('response').innerText = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

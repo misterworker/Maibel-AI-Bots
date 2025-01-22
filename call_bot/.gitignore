@@ -24,5 +24,3 @@ env/
 
 # Ignore other unnecessary files/folders
 *.log
-agent_supervisor.py
-pc_mg.py

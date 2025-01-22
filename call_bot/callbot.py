@@ -55,10 +55,10 @@ async def call_model(state: MessagesState, config):
         try:
             return await nemo_nvidia_llm.ainvoke(messages)
         except:
-            asyncio.sleep(50)
+            await asyncio.sleep(50)
 
     async def get_openai_response():
-        await asyncio.sleep(25)
+        await asyncio.sleep(20)
         return await OpenAI_llm.ainvoke(messages)
     
     try:
@@ -71,7 +71,7 @@ async def call_model(state: MessagesState, config):
         for task in pending: task.cancel()
 
     except asyncio.TimeoutError:
-        # If neither task completes within 25 seconds, return fallback response
+        # If neither task completes within 20 seconds, return fallback response
         print("Both tasks took too long. Returning fallback response.")
         response.content = "Response took too long. Sorry about that. Please try again."
     

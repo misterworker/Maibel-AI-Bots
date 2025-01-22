@@ -7,7 +7,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 OpenAI_llm = ChatOpenAI(
     model="gpt-4o-mini-2024-07-18",
-    temperature=0,
+    temperature=5,
     max_tokens=100,
     timeout=None,
     max_retries=2,
@@ -20,7 +20,7 @@ def calculate_absolute(prog, target, curIncrement):
 
 async def challengeBot(challenge, challengeProgress, target, increment):
     absolute_value = calculate_absolute(challengeProgress, target, increment)
-    isNegative = increment < 0
+    isNegative = increment < 0.0
 
     c_i = (f"The challenge is this: {challenge}. The change in progress is this: {increment}, "
     f"and the challenge progress in absolute value is now: {absolute_value}")
@@ -35,5 +35,6 @@ async def challengeBot(challenge, challengeProgress, target, increment):
     else:
         prompt = (f"The user is progressing on his challenge. Encourage him!!!. {c_i}")
         
-    response = OpenAI_llm.ainvoke(prompt)
-    print("Challenge bot response: ", response)
+    response = await OpenAI_llm.ainvoke(prompt)
+    return response.content
+    

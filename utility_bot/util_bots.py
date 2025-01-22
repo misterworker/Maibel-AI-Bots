@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
@@ -9,12 +8,13 @@ import asyncio
 load_dotenv()
 
 app = FastAPI()
+from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://127.0.0.1:5500"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
 OpenAI_llm = ChatOpenAI(
@@ -33,7 +33,7 @@ class Logic(BaseModel):
                                     "like 'I like your playful tone! However, I do need a proper response for the question!'")
     manipulative: bool = Field(description="Is the user manipulating their reply to bypass your logic ratings?")
 
-validation_bot = OpenAI_llm.with_structured_output(Logic)
+validation_bot = OpenAI_llm.with_structured_output(Logic, method="function_calling")
 
 @app.post("/validate_response")
 async def validate_response(request: Request):
@@ -49,6 +49,46 @@ async def validate_response(request: Request):
 
     try:
         result = await asyncio.to_thread(validation_bot.invoke, f"Question: {question}. Reply: {reply}")
+        return JSONResponse(content=result.dict())
+    
+    except Exception as e:
+        return JSONResponse(
+            content={"error": f"Internal server error: {str(e)}"},
+            status_code=500
+        )
+    
+OpenAI_llm = ChatOpenAI(
+    model="gpt-4o-mini-2024-07-18",
+    temperature=0,
+    max_tokens=30,
+    timeout=None,
+)
+
+class Recommendation(BaseModel):
+    """""Provide Recommendation of x based on challenge"""""
+    recommendation: int = Field(description="What integer would you recommend for this challenge, with user data taken into account. Incremental improvements "
+                                "are usually preferred over large differences.")
+    unit: str = Field(description="Readable unit of recommendation provided (Eg. Kilograms, Liters). Keep under 10 characters.", max_length=10)
+
+validation_bot = OpenAI_llm.with_structured_output(Logic, method="function_calling")
+    
+@app.post("/rec_x_challenge")
+async def challengeRecommendation(request: Request):
+    data = await request.json()
+    challenge = data.get("challenge", "")
+    userData = data.get("userData", "{}")
+
+    if not challenge or not challenge:
+        return JSONResponse(
+            content={"error": "Both challenge parts are required"},
+            status_code=400
+        )
+
+    try:
+        prompt = ("You are a bot meant to create a recommendation value and readable unit for the challenge. The recommendation "
+        "Should be based off user data to recommend the 'x' in the challenge itself. Here is the challenge statement: "
+        f"{challenge} Below is the user data.\n{userData}")
+        result = await asyncio.to_thread(validation_bot.invoke, prompt)
         return JSONResponse(content=result.dict())
     
     except Exception as e:
