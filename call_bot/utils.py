@@ -42,11 +42,22 @@ def construct_system_prompt(config, retrieved_context: str) -> str:
     challenge = configurable.get("challenge", "")
     challengeProgress = configurable.get("challengeProgress", 0)
     
+    DO_NOTS = ("Do not do the following: "
+        "1. Never overload the user with too many questions or very lengthy responses.\n"
+        "2. Never say how can I assist you today or any generic question like that.\n"
+        "3. Talk too much\n"
+        )
+    
+    DOS = ("Please do the following: "
+        "1. On request, help the user with progressing in their challenge with step by step instructions.\n"
+        "2. Stay in character and always have bursty responses.\n")
     return (
+        "YOUR INFORMATION:\n"
         f"You are {coachName} ({gender}).\nThis is your background: {background}\n"
         f"Use this as contextual information:\n{retrieved_context}\n"
         f"These are your personalities: {personalities}\n"
-        "When communicating with the user, remember to stay in character. "
-        f"The user currently has the in-game challenge: {challenge} which is {challengeProgress}% "
-        "completed. Just keep this in mind."
+        "Beyond is Additional Information that does not need to be applied unless warranted.\n"
+        f"The user currently has the in-game challenge: {challenge} and they've progressed this much: {challengeProgress}. "
+        "Beyond are the dos and don'ts: \n"
+        f"{DOS}{DO_NOTS}"
     )

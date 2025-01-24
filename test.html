@@ -59,8 +59,8 @@
     <label for="userid">User ID:</label>
     <input type="text" id="userid">
 
-    <label for="summary">Previous Summary:</label>
-    <input type="text" id="summary" value="No Summary">
+    <label for="recVal">recVal:</label>
+    <input type="number" id="recVal" value="No recVal">
 
     <label for="challenge">Challenge:</label>
     <input type="text" id="challenge" value="No Challenge">
@@ -104,7 +104,7 @@
         async function sendMessage() {
             const message = document.getElementById('message').value;
             const userid = document.getElementById('userid').value;
-            const summary = document.getElementById('summary').value;
+            const recVal = document.getElementById('recVal').value;
             const challenge = document.getElementById('challenge').value;
             const coachId = document.getElementById('coachId').value;
 
@@ -128,7 +128,9 @@
                 personality: personality,
                 coachName: coachName,
                 gender: gender,
-                background: background
+                background: background,
+                recVal: recVal,
+                challenge: challenge,
             };
 
             try {

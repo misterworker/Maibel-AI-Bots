@@ -6,24 +6,29 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 OpenAI_llm = ChatOpenAI(
-    model="gpt-4o-mini-2024-07-18",
-    temperature=5,
+    model="gpt-4o-mini",
+    temperature=0.85,
     max_tokens=100,
-    timeout=None,
+    timeout=10,
     max_retries=2,
     api_key=OPENAI_API_KEY,
 )
 
 def calculate_absolute(prog, target, curIncrement):
-    cur_absolute = prog*0.01*target
-    return cur_absolute + curIncrement
+    cur_absolute = prog*target
+    return round(cur_absolute + curIncrement, 2)
 
-async def challengeBot(challenge, challengeProgress, target, increment):
+def calculate_final_progress(prog, target, curIncrement):
+    increment_percent = curIncrement/target
+    finalChallengeProgress = round(increment_percent + prog, 2)
+    return finalChallengeProgress
+
+async def challengeBot(challenge, challengeProgress, target, increment, user_input):
     absolute_value = calculate_absolute(challengeProgress, target, increment)
     isNegative = increment < 0.0
 
-    c_i = (f"The challenge is this: {challenge}. The change in progress is this: {increment}, "
-    f"and the challenge progress in absolute value is now: {absolute_value}")
+    c_i = (f"The challenge is this: {challenge}. The user just progressed by: {increment}, "
+    f"and the final challenge progress is now: {absolute_value}. Original user input: {user_input}")
 
     if isNegative:
         prompt = ("The user has voluntarily deducted progress from his challenge. Applaud his honesty "
@@ -36,5 +41,6 @@ async def challengeBot(challenge, challengeProgress, target, increment):
         prompt = (f"The user is progressing on his challenge. Encourage him!!!. {c_i}")
         
     response = await OpenAI_llm.ainvoke(prompt)
-    return response.content
+    finalprog = calculate_final_progress(challengeProgress, target, increment)
+    return [response.content, finalprog]
     

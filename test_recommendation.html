@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Recommendation API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            margin: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: auto;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        label {
+            font-weight: bold;
+            margin-top: 10px;
+            display: block;
+        }
+        textarea, input, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .response {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f1f1f1;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Recommendation API</h1>
+    <label for="challenge">Challenge:</label>
+    <textarea id="challenge" rows="3" placeholder="Enter the challenge statement"></textarea>
+
+    <label for="userData">User Data:</label>
+    <textarea id="userData" rows="5" placeholder="Enter the user data in JSON format"></textarea>
+
+    <button onclick="getRecommendation()">Get Recommendation</button>
+
+    <div class="response" id="response"></div>
+
+    <script>
+        async function getRecommendation() {
+            const challenge = document.getElementById('challenge').value;
+            const userData = document.getElementById('userData').value;
+
+            if (!challenge || !userData) {
+                document.getElementById('response').innerText = "Please fill in both the challenge and user data.";
+                return;
+            }
+
+            try {
+                const parsedUserData = JSON.parse(userData); // Ensure userData is valid JSON
+
+                const payload = { challenge, userData: parsedUserData };
+                const response = await fetch('http://127.0.0.1:8000/rec_x_challenge', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('response').innerText = JSON.stringify(data, null, 2);
+                } else {
+                    const errorData = await response.json();
+                    document.getElementById('response').innerText = `Error: ${errorData.error}`;
+                }
+            } catch (error) {
+                document.getElementById('response').innerText = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -19,22 +19,20 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Initialize LangChain LLMs
 OpenAI_llm = ChatOpenAI(
-    model="gpt-4o-mini-2024-07-18",
-    temperature=0.6,
+    model="gpt-4o-mini",
+    temperature=0.8,
     max_tokens=5000,
-    timeout=None,
+    timeout=20,
     max_retries=2,
     api_key=OPENAI_API_KEY,
 )
 
 nemo_nvidia_llm = ChatNVIDIA(
     model="meta/llama-3.1-70b-instruct",
-    temperature=0.6,
+    temperature=0.8,
     max_tokens=5000,
     api_key=NVIDIA_API_KEY,
 )
-
-all_llms = [nemo_nvidia_llm, OpenAI_llm]
 
 # Initialize vector store manager
 pinecone_vs = VectorStoreManager()
@@ -52,20 +50,23 @@ async def call_model(state: MessagesState, config):
     messages = [SystemMessage(content=system_prompt)] + trimmed_state
 
     async def get_nemo_response():
+        await asyncio.sleep(10)
         try:
             return await nemo_nvidia_llm.ainvoke(messages)
         except:
-            await asyncio.sleep(50)
+            await asyncio.sleep(11)
 
     async def get_openai_response():
-        await asyncio.sleep(20)
-        return await OpenAI_llm.ainvoke(messages)
+        try:
+            return await OpenAI_llm.ainvoke(messages)
+        except:
+            await asyncio.sleep(21)
     
     try:
         # Create tasks for each coroutine
         nemo_task = asyncio.create_task(get_nemo_response())
         openai_task = asyncio.create_task(get_openai_response())
-        done, pending = await asyncio.wait([nemo_task, openai_task], return_when=asyncio.FIRST_COMPLETED, timeout=50)
+        done, pending = await asyncio.wait([nemo_task, openai_task], return_when=asyncio.FIRST_COMPLETED, timeout=20)
 
         for task in done: response = task.result(); break
         for task in pending: task.cancel()
