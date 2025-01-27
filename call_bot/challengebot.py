@@ -23,7 +23,7 @@ def calculate_final_progress(prog, target, curIncrement):
     finalChallengeProgress = round(increment_percent + prog, 2)
     return finalChallengeProgress
 
-async def challengeBot(challenge, challengeProgress, target, increment, user_input):
+async def challengeBot(challenge, challengeProgress, target, increment, user_input, personalities, background):
     absolute_value = calculate_absolute(challengeProgress, target, increment)
     isNegative = increment < 0.0
 

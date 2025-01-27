@@ -40,13 +40,13 @@ pinecone_vs = VectorStoreManager()
 # Model call function
 async def call_model(state: MessagesState, config):
     trimmed_state = trim_messages(state['messages'], strategy="last", token_counter=len,
-                                  max_tokens=11, start_on="human", end_on=("human"), include_system=False)
+                                  max_tokens=21, start_on="human", end_on=("human"), include_system=False)
     user_input = trimmed_state[-1].content
 
-    retrieved_docs = pinecone_vs.retrieve_from_vector_store(user_input, 1)
-    retrieved_context = "\n".join([res.page_content for res in retrieved_docs])
+    # retrieved_docs = pinecone_vs.retrieve_from_vector_store(user_input, 1)
+    # retrieved_context = "\n".join([res.page_content for res in retrieved_docs])
 
-    system_prompt = construct_system_prompt(config, retrieved_context)
+    system_prompt = construct_system_prompt(config, "retrieved_context") #! Uncomment retrieved Context (Temp disabled since theres nothing to retrieve)
     messages = [SystemMessage(content=system_prompt)] + trimmed_state
 
     async def get_nemo_response():
@@ -66,7 +66,7 @@ async def call_model(state: MessagesState, config):
         # Create tasks for each coroutine
         nemo_task = asyncio.create_task(get_nemo_response())
         openai_task = asyncio.create_task(get_openai_response())
-        done, pending = await asyncio.wait([nemo_task, openai_task], return_when=asyncio.FIRST_COMPLETED, timeout=20)
+        done, pending = await asyncio.wait([openai_task, nemo_task], return_when=asyncio.FIRST_COMPLETED, timeout=20)
 
         for task in done: response = task.result(); break
         for task in pending: task.cancel()
@@ -82,7 +82,7 @@ async def call_model(state: MessagesState, config):
 async def chat_endpoint(user_input, userid, coachId, personality, coachName, gender, background, challenge, challengeProgress):
     async with AsyncConnectionPool(
         conninfo=DB_URI,
-        max_size=20,
+        max_size=30,
         kwargs={"autocommit": True, "prepare_threshold": 0}
     ) as pool:
         checkpointer = AsyncPostgresSaver(pool)
